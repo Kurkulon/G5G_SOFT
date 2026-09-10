@@ -62,11 +62,6 @@ static u16 tlsTrmBaud = 0;
 static const u16 manReqWord = 0x7000;
 static const u16 manReqMask = 0xFF00;
 
-#ifdef TLS_GORIZONT
-static const u16 tlsReqWord = 0x0000;
-static const u16 tlsReqMask = 0xFF00;
-#endif
-
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //u16 txbuf[128 + 512 + 16];
@@ -99,6 +94,9 @@ u32 loc_period = 0;
 u16 loc_req_count = 0;
 u16 framErrorMask = 0;
 
+i16 ax = 0, ay = 0, az = 0, at = 0;
+u16 vibration;
+
 enum { FRAM_ERROR_LOADVARS = 0, FRAM_ERROR_ECC, FRAM_ERROR_PARECC, FRAM_CORR_ECC, FRAM_NOACKR, FRAM_NOACKW, FRAM_LOAD_OK };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -110,9 +108,9 @@ void SaveMainParams()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_00(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	if (len == 0 || len > 2 || wb == 0) return false;
 
 	__packed u16 *start = manTrmData;
 
@@ -122,19 +120,17 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 	*(data++)	= mv.numDevice;
 	*(data++)	= verDevice;
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = data - start;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = (data - start)*2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	if (len == 0 || len > 2 || wb == 0) return false;
 
 	__packed u16 *start = manTrmData;
 
@@ -147,21 +143,19 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	*(data++)	= mv.mLevel;							//	5. Уровень дискриминации МЗ(у.е), 					
 	*(data++)	= mv.bLevel;							//	6. Уровень дискриминации БЗ(у.е),					
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = data - start;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = (data - start)*2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	static u32 pt = 0;
 
-	if (data == 0 || len == 0 || len > 1 || mtb == 0) return false;
+	if (len == 0 || len > 1 || wb == 0) return false;
 
 	u32 t = GetCYCCNT();
 	u32 dt = t - pt;
@@ -244,48 +238,19 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 
 	#else
 
-		mtb->data1 = manTrmData;
-		mtb->len1 = data-start;
+		wb->data = manTrmData;
+		wb->len = (data - start)*2;
 
 	#endif
-
-	mtb->data2 = 0;
-	mtb->len2 = 0;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
-//{
-//	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
-//
-//	__packed u16 *start = manTrmData;
-//
-//	data = manTrmData;
-//
-//	*(data++)	= (manReqWord & manReqMask) | 0x30;		//	1. ответное слово
-//	*(data++)	= loc;									//	2. Локатор
-//	*(data++)	= loc_min;								//	3. Локатор минимум			
-//	*(data++)	= loc_max;								//	4. Локатор максимум					
-//	*(data++)	= loc_gk;								//	5. ГК(имп/период)			
-//	*(data++)	= loc_period;							//	6,7. Период(мс)(uint32)			
-//	*(data++)	= loc_period>>16;						//	6,7. Период(мс)(uint32)			
-//
-//	mtb->data1 = manTrmData;
-//	mtb->len1 = data - start;
-//	mtb->data2 = 0;
-//	mtb->len2 = 0;
-//
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
+	if (len < 3 || len > 4 || wb == 0) return false;
 
 	switch (data[1])
 	{
@@ -304,19 +269,17 @@ static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = 2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
+	if (len < 3 || len > 4 || wb == 0) return false;
 
 	switch(data[1])
 	{
@@ -333,19 +296,17 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = 2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_A0(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_A0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
+	if (len < 3 || len > 4 || wb == 0) return false;
 
 	switch(data[1])
 	{
@@ -358,482 +319,368 @@ static bool RequestMan_A0(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xA0;
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = 2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_F0(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	if (len == 0 || len > 2 || wb == 0) return false;
 
 	SaveMainParams();
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
+	wb->data = manTrmData;
+	wb->len = 2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
+static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
-
-	if ((buf[0] & manReqMask) != manReqWord) return false;
-
+	u16 *p = (u16*)rb->data;
 	bool r = false;
 
-	byte i = (buf[0]>>4)&0xF;
+	u16 t = p[0];
 
-	switch (i)
+	if ((t & manReqMask) != manReqWord || rb->len < 2)
 	{
-		case 0x0: 	r = RequestMan_00(buf, len, mtb); break;
-		case 0x1: 	r = RequestMan_10(buf, len, mtb); break;
-		case 0x2: 	r = RequestMan_20(buf, len, mtb); break;
-	//	case 0x3:	r = RequestMan_30(buf, len, mtb); break;
-		case 0x8: 	r = RequestMan_80(buf, len, mtb); break;
-		case 0x9:	r = RequestMan_90(buf, len, mtb); break;
-		case 0xA:	r = RequestMan_A0(buf, len, mtb); break;
-		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
+		return false;
 	};
 
-	if (r) { mtb->baud = manTrmBaud; };
+	u16 len = (rb->len)>>1;
+
+	t = (t>>4) & 0xF;
+
+	switch (t)
+	{
+		case 0x0: 	r = RequestMan_00(p, len, wb); break;
+		case 0x1: 	r = RequestMan_10(p, len, wb); break;
+		case 0x2: 	r = RequestMan_20(p, len, wb); break;
+		case 0x8: 	r = RequestMan_80(p, len, wb); break;
+		case 0x9:	r = RequestMan_90(p, len, wb); break;
+		case 0xA:	r = RequestMan_A0(p, len, wb); break;
+		case 0xF:	r = RequestMan_F0(p, len, wb); break;
+	};
 
 	return r;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifdef TLS_GORIZONT
-
-static bool RequestTLS_00(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
-
-	__packed u16 *start = manTrmData;
-
-	data = manTrmData;
-
-	*(data++)	= (tlsReqWord & tlsReqMask) | 0;
-	*(data++)	= mv.numDevice;
-	*(data++)	= 0x108;
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = data - start;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS_10(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
-
-	__packed u16 *start = manTrmData;
-
-	data = manTrmData;
-
-	*(data++)	= (tlsReqWord & tlsReqMask) | 0x10;		//	1. Ответное слово (принятая команда)
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = data - start;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS_20(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len == 0 || len > 1 || mtb == 0) return false;
-
-	__packed u16 *start = manTrmData;
-
-	manTrmData[0] = data[0];					//	1. ответное слово			
-
-	data = manTrmData;
-	data++;
-
-	*(data++)	= Get_FBPOW2();				//	2. Напряжение питания (0.1 В short)			
-	*(data++)	= temp;						//	3. Температура в приборе (0.1 гр short)					
-	*(data++)	= 10;						//	4. Амплитуда запроса (у.е short)								
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = data-start;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS_80(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
-
-	switch (data[1])
-	{
-		case 1:
-
-			//mv.numDevice = data[2];
-
-			break;
-
-		case 2:
-
-			tlsTrmBaud = data[2] - 1;	//SetTrmBoudRate(data[2]-1);
-
-			break;
-	};
-
-	manTrmData[0] = (tlsReqWord & tlsReqMask) | 0x80;
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS_90(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
-
-	//switch(data[1])
-	//{
-	//case 0x01:	SetGenFreq(							mv.genFreq	= LIM(data[2], 4, 50)			);	break;	//	0x1 - Частота генератора(4..50 Гц), 
-	//case 0x02:	SetWindowCount(						mv.winCount	= LIM(data[2], 2, WINDOW_SIZE)	);	break;	//	0x2 - Количество временных окон(2..1024 шт), 
-	//case 0x03:	SetWindowTime(						mv.winTime	= LIM(data[2], 2, 512)			);	break;	//	0x3 - Длительность временного окна(2..2048 мкс), 
-	//case 0x04:	AD5312_Set(AD5312_CHANNEL_LEVEL_M,	mv.mLevel	= MIN(data[2], 0x3FF)			);	break;	//	0x4 - Уровень дискриминации МЗ(у.е), 
-	//case 0x05:	AD5312_Set(AD5312_CHANNEL_LEVEL_B,	mv.bLevel	= MIN(data[2], 0x3FF)			);	break;	//	0x5 - Уровень дискриминации БЗ(у.е),
-
-	//default:
-
-	//	return false;
-	//};
-
-	manTrmData[0] = (tlsReqWord & tlsReqMask) | 0x90;
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS_F0(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
-
-	SaveMainParams();
-
-	manTrmData[0] = (tlsReqWord & tlsReqMask) | 0xF0;
-
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestTLS(u16 *buf, u16 len, MTB* mtb)
-{
-	if (buf == 0 || len == 0 || mtb == 0) return false;
-
-	if ((buf[0] & tlsReqMask) != tlsReqWord) return false;
-
-	bool r = false;
-
-	byte i = (buf[0]>>4)&0xF;
-
-	switch (i)
-	{
-	case 0x0: 	r = RequestTLS_00(buf, len, mtb); break;
-	case 0x1: 	r = RequestTLS_10(buf, len, mtb); break;
-	case 0x2: 	r = RequestTLS_20(buf, len, mtb); break;
-	case 0x8: 	r = RequestTLS_80(buf, len, mtb); break;
-	case 0x9:	r = RequestTLS_90(buf, len, mtb); break;
-	case 0xF:	r = RequestTLS_F0(buf, len, mtb); break;
-	};
-
-	if (r) { mtb->baud = tlsTrmBaud; };
-
-	return r;
-}
-#endif // 	#ifdef TLS_GORIZONT
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateMan()
 {
-	static MTB mtb;
-	static MRB mrb;
-
 	static byte i = 0;
-
-	static u16 rcvLen = 0;
-
-	static CTM32 tm;
-
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
+	//static byte buf[1024];
 
-//	u16 c;
-
-	switch (i)
+	switch(i)
 	{
 		case 0:
 
-//			HW::P5->BSET(7);
-
-			mrb.data = manRcvData;
-			mrb.maxLen = ArraySize(manRcvData);
-			RcvManData(&mrb);
-
+			rb.data = manRcvData;
+			rb.maxLen = sizeof(manRcvData);
+			comdsp.Read(&rb, ~0, US2COM(100));
 			i++;
 
 			break;
 
 		case 1:
 
-			ManRcvUpdate();
-
-			if (mrb.ready)
-			{
-				tm.Reset();
-
-				if (!mrb.OK || mrb.len == 0)
-				{
-					i = 0;	
-				}
-				else
-				{
-					if ((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb))
-					{
-						i++;
-					}
-#ifdef TLS_GORIZONT
-					else if ((manRcvData[0] & tlsReqMask) == tlsReqWord && RequestTLS(manRcvData, mrb.len, &mtb))
-					{
-						i++;
-					}
-					else
-					{
-						i += 3;
-					};
-#else
-					else
-					{
-						i = 0;
-					};
-#endif
-				};
-			}
-			else if (mrb.len > 0)
-			{
-
-			};
-
-			break;
-
-		case 2:
-
-			if (tm.Check(US2CTM(200)))
-			{
-				SendManData(&mtb);
-
-				i++;
-			};
-
-			break;
-
-		case 3:
-
-			if (mtb.ready)
-			{
-				i = 0;
-			};
-
-			break;
-
-	#ifdef TLS_GORIZONT
-
-		case 4:
-
-			//for (u32 n = 0; n < mrb.len; n++) manRcvData[n] = ReverseWord(manRcvData[n]);
-
-			wb.data = manRcvData;
-			wb.len = mrb.len*2;
-
-			comdsp.Write(&wb);
-
-			i++;
-
-			break;
-
-		case 5:
-
 			if (!comdsp.Update())
 			{
-				rb.data = manTrmData;
-				rb.maxLen = sizeof(manTrmData);
-				comdsp.Read(&rb, MS2COM(10), US2COM(100));
-
-				HW::PIOB->BSET(15);
-
-				i++;
-			};
-
-			break;
-
-		case 6:
-		{
-			bool c = !comdsp.Update();
-
-			if (tm.Timeout(US2CTM(200)))
-			{
-				if (rb.recieved || rb.len > 2)
+				if (rb.recieved && rb.len > 0 && RequestMan(&wb, &rb))
 				{
-					HW::PIOB->BCLR(15);
-
-					mtb.baud	= tlsTrmBaud;
-					mtb.data1	= manTrmData;
-					mtb.len1	= 0;
-					mtb.data2	= 0;
-					mtb.len2	= 0;
-					mtb.lenptr = &rcvLen;
-
-					rcvLen = ArraySize(manTrmData); //rb.len/2;
-
-					SendManData(&mtb);
-
-					HW::PIOB->BSET(15);
-
-					i++;
+					comdsp.Write(&wb);
 				}
-				else if (c)
+				else
 				{
 					i = 0;
 				};
 			};
 
 			break;
-		};
-
-		case 7:
-		{
-			bool c = !comdsp.Update();
-
-			if (rb.recieved || c)
-			{
-				rcvLen = rb.len/2;
-
-				i -= 4;
-
-				HW::PIOB->BCLR(15);
-			};
-
-			break;
-		};
-
-	#endif
-
 	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateCom()
+//static void UpdateCom()
+//{
+//	static byte i = 0;
+//	static CTM32 ctm;
+//	static ComPort::WriteBuffer wb;
+//	static ComPort::ReadBuffer rb;
+//	static u16 buf[16];
+//	
+//	switch(i)
+//	{
+//		case 0:
+//
+//			buf[0] = 0x220;
+//
+//			wb.data = buf;
+//			wb.len = 2;
+//
+//			comdsp.Write(&wb);
+//
+//			i++;
+//
+//			break;
+//
+//		case 1:
+//
+//			if (!comdsp.Update())
+//			{
+//				rb.data = buf;
+//				rb.maxLen = sizeof(buf);
+//				comdsp.Read(&rb, MS2COM(10), US2COM(500));
+//
+//				i++;
+//			};
+//
+//			break;
+//
+//		case 2:
+//
+//			if (!comdsp.Update())
+//			{
+//				if (rb.recieved && rb.len >= 16 && buf[0] == 0x220)
+//				{
+//					loc				= buf[1];
+//					loc_min			= MIN((i16)buf[2], loc_min);
+//					loc_max			= MAX((i16)buf[2], loc_max);
+//					loc_gk			+= buf[4];
+//					loc_tension		= buf[5];
+//					loc_period		+= buf[6]|(buf[7]<<16);
+//					loc_req_count	+= 1;
+//				};
+//
+//				i++;
+//			};
+//
+//			break;
+//
+//		case 3:
+//
+//			if (ctm.Check(MS2CTM(100)))
+//			{
+//				i = 0;
+//			};
+//
+//			break;
+//	};
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static DSCSPI dscAccel;
+
+//static i16 ax = 0, ay = 0, az = 0, at = 0;
+
+
+static u8 txAccel[25] = { 0 };
+static u8 rxAccel[50];
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool AccelReadReg(byte reg, u16 count)
 {
-	static byte i = 0;
-	static CTM32 ctm;
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-//	static MTB mtb;
-	static u16 buf[16];
-	
-	switch(i)
+	dscAccel.adr = (reg<<1)|1;
+	dscAccel.alen = 1;
+	//dscAccel.baud = 8000000;
+	dscAccel.csnum = 0;
+	dscAccel.wdata = 0;
+	dscAccel.wlen = 0;
+	dscAccel.rdata = rxAccel;
+	dscAccel.rlen = count;
+
+	return spiadxl.AddRequest(&dscAccel);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool AccelWriteReg(byte reg, u16 count)
+{
+	dscAccel.adr = (reg<<1)|0;
+	dscAccel.alen = 1;
+	dscAccel.csnum = 0;
+	dscAccel.wdata = txAccel;
+	dscAccel.wlen = count;
+	dscAccel.rdata = 0;
+	dscAccel.rlen = 0;
+
+	return spiadxl.AddRequest(&dscAccel);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateAccel()
+{
+	static byte i = 0; 
+	static i32 fx = 0, fy = 0, fz = 0, fv = 0, ft = 0;
+
+	static TM32 tm;
+
+	spiadxl.Update();
+
+	switch (i)
 	{
-		case 0:
+	case 0:
 
-			buf[0] = 0x220;
+		txAccel[0] = 0x52;
+		AccelWriteReg(0x2F, 1); // Reset
 
-			wb.data = buf;
-			wb.len = 2;
+		i++;
 
-			comdsp.Write(&wb);
+		break;
+
+	case 1:
+
+		if (dscAccel.ready)
+		{
+			tm.Reset();
 
 			i++;
+		};
 
-			break;
+		break;
 
-		case 1:
+	case 2:
 
-			if (!comdsp.Update())
+		if (tm.Check(35))
+		{
+			AccelReadReg(0x1E, 18);
+
+			i++;
+		};
+
+		break;
+
+	case 3:
+
+		if (dscAccel.ready)
+		{
+			txAccel[0] = 0;
+			AccelWriteReg(0x28, 1); // FILTER SETTINGS REGISTER
+
+			i++;
+		};
+
+		break;
+
+	case 4:
+
+		if (dscAccel.ready)
+		{
+			txAccel[0] = 0;
+			AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
+
+			i++;
+		};
+
+		break;
+
+	case 5:
+
+		if (dscAccel.ready)
+		{
+			AccelReadReg(0x2D, 1);
+
+			i++;
+		};
+
+		break;
+
+	case 6:
+
+		if (dscAccel.ready)
+		{
+			if (rxAccel[0] != 0)
 			{
-				rb.data = buf;
-				rb.maxLen = sizeof(buf);
-				comdsp.Read(&rb, MS2COM(10), US2COM(500));
+				txAccel[0] = 0;
+				AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
+				i--; 
+			}
+			else
+			{
+				txAccel[0] = 0;
+				AccelWriteReg(0x2E, 1); // Self Test
 
+				tm.Reset();
 				i++;
 			};
+		};
 
-			break;
+		break;
 
-		case 2:
+	case 7:
 
-			if (!comdsp.Update())
-			{
-				if (rb.recieved && rb.len >= 16 && buf[0] == 0x220)
-				{
-					loc				= buf[1];
-					loc_min			= MIN((i16)buf[2], loc_min);
-					loc_max			= MAX((i16)buf[2], loc_max);
-					loc_gk			+= buf[4];
-					loc_tension		= buf[5];
-					loc_period		+= buf[6]|(buf[7]<<16);
-					loc_req_count	+= 1;
-				};
+		if (dscAccel.ready)
+		{
+			i++;
+		};
 
-				i++;
-			};
+		break;
 
-			break;
+	case 8:
 
-		case 3:
+		if (tm.Check(10))
+		{
+			AccelReadReg(6, 11); // X_MSB 
 
-			if (ctm.Check(MS2CTM(100)))
-			{
-				i = 0;
-			};
+			i++;
+		};
 
-			break;
+		break;
+
+	case 9:
+
+		if (dscAccel.ready)
+		{
+			i32 t = (rxAccel[0] << 8)  | rxAccel[1];
+			i32 x = (rxAccel[2] << 24) | (rxAccel[3] << 16) | (rxAccel[4]  <<8);
+			i32 y = (rxAccel[5] << 24) | (rxAccel[6] << 16) | (rxAccel[7]  <<8);
+			i32 z = (rxAccel[8] << 24) | (rxAccel[9] << 16) | (rxAccel[10] <<8);
+
+			fx += (x - fx) / 16;
+			fy += (y - fy) / 16;
+			fz += (z - fz) / 16;
+			ft += (t - ft) / 4;
+
+			ay = -(fz / 65536); 
+			ax = -(fy / 65536); 
+			az =  (fx / 65536);
+
+			//at = 2500 + ((1852 - t) * 2000 + 91) / 181;
+			at = 2500 + ((1852 - ft) * 11315 + 512) / 1024;
+
+			i32 vx = ABS(x - fx) / 64;
+			i32 vy = ABS(y - fy) / 64;
+			i32 vz = ABS(z - fz) / 64;
+
+			fv += ((i32)(vx+vy+vz)-fv)/256;
+
+			t = fv/1024;
+
+			vibration = LIM(t, 0, 0xFFFF);
+
+			i--;
+		};
+
+		break;
 	};
 }
 
@@ -1491,14 +1338,10 @@ static void InitTaskList()
 	{
 		Task(UpdateTemp,		US2CTM(100)		),
 		Task(SaveVars,			US2CTM(100)		),
-	
-	#ifndef TLS_GORIZONT
-		Task(UpdateCom,			US2CTM(100)		),
-	#endif
-
 		Task(UpdateHardware,	US2CTM(1)		),
 		Task(UpdateMan,			US2CTM(10)		),
 //		Task(TestFRAM,			US2CTM(100)		),
+		Task(UpdateAccel,		US2CTM(10)		),
 		Task(UpdateWindow,		US2CTM(1000)	)
 	};
 
@@ -1521,7 +1364,9 @@ int main()
 
 	InitTaskList();
 
-	comdsp.Connect(ComPort::ASYNC, 250000, 2, 1);
+	comdsp.Connect(ComPort::ASYNC, 2000000, 0, 2);
+
+	spiadxl.Connect(ADXL_BAUDRATE);
 
 	u32 fc = 0;
 	u16 n = 0;

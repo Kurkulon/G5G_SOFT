@@ -10,7 +10,7 @@
 //#include "hw_rtm.h"
 //#include "hw_nand.h"
 #include "DMA\DMA.h"
-#include "MANCH\manch.h"
+//#include "MANCH\manch.h"
 //#include <math.h>
 #include "spi.h"
 
@@ -22,8 +22,17 @@ static u32 SPI_CS_MASK[] = { SYNC };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static S_SPIM	spi(SPI_SERCOM_NUM, PIO_SCLK, PIO_MOSI, 0, PIO_SYNC, SCLK, MOSI, 0, SPI_PMUX_SCLK, SPI_PMUX_MOSI, 0, SPI_CS_MASK, ArraySize(SPI_CS_MASK), 
+static S_SPIM	spidac(SPI_SERCOM_NUM, PIO_SCLK, PIO_MOSI, 0, PIO_SYNC, SCLK, MOSI, 0, SPI_PMUX_SCLK, SPI_PMUX_MOSI, 0, SPI_CS_MASK, ArraySize(SPI_CS_MASK), 
 	SPI_DIPO_BITS, SPI_DOPO_BITS, SPI_GEN_SRC, SPI_GEN_CLK, SPI_DMA_TX_CH, SPI_DMA_RX_CH);
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static u32 ADXL_CS_MASK[] = { ADXL_CS };
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+S_SPIM	spiadxl(ADXL_SERCOM_NUM, PIO_ADXLSPCK, PIO_ADXLMOSI, PIO_ADXLMISO, PIO_ADXL_CS, ADXLSPCK, ADXLMOSI, ADXLMISO, ADXL_PMUX_SPCK, ADXL_PMUX_MOSI, ADXL_PMUX_MISO, ADXL_CS_MASK, ArraySize(ADXL_CS_MASK), 
+	ADXL_DIPO_BITS, ADXL_DOPO_BITS, ADXL_GEN_SRC, ADXL_GEN_CLK, ADXL_DMA_TX_CH, ADXL_DMA_RX_CH);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -877,7 +886,7 @@ void AD5312_Set(byte channel, u16 dac)
 
 static void Init_AD5312()
 {
-	spi.Connect(SPI_BAUDRATE);
+	spidac.Connect(SPI_BAUDRATE);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -906,7 +915,7 @@ static void Update_AD5312()
 				dsc.wlen = 0;
 				dsc.rlen = 0;
 
-				spi.AddRequest(&dsc);
+				spidac.AddRequest(&dsc);
 
 				state++;
 			};
@@ -915,7 +924,7 @@ static void Update_AD5312()
 
 		case 1:
 
-			spi.Update();
+			spidac.Update();
 
 			if (dsc.ready)
 			{
@@ -1004,8 +1013,8 @@ void InitHardware()
 
 	Init_time();
 	I2C_Init();
-	InitManRecieve();
-	InitManTransmit();
+	//InitManRecieve();
+	//InitManTransmit();
 	InitGen();
 	Init_AD5312();
 

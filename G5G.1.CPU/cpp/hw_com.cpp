@@ -1,7 +1,7 @@
 #pragma O3
 #pragma Otime
 
-#include "G5D_1_HW_CONF.H"
+#include "G5G_1_HW_CONF.H"
 
 //#include <stdio.h>
 //#include <conio.h>

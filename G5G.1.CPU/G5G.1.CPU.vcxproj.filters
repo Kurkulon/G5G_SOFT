@@ -14,13 +14,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Include\G_RCV.h">
-      <Filter>Global Include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Include\G_TRM.h">
-      <Filter>Global Include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\G5D_1_HW_CONF.H">
+    <ClInclude Include="..\Include\G5G_1_HW_CONF.H">
       <Filter>Global Include</Filter>
     </ClInclude>
     <ClInclude Include="cpp\hardware.h">

@@ -17,7 +17,6 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //#define COMPRESS_REQ20
-//#define TLS_GORIZONT
 
 //#define FRAM_SPI_MAINVARS_ADR 0
 
@@ -94,11 +93,11 @@
 
 	// ++++++++++++++	SERCOM	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//#define SERCOM_0			0
+	#define UART0_SERCOM_NUM	0
 	//#define SERCOM_1			1
-	#define UART0_SERCOM_NUM	2
+	//#define 					2
 	#define I2C_SERCOM_NUM		3
-	//#define SERCOM_4			4
+	#define ADXL_SERCOM_NUM		4
 	#define SPI_SERCOM_NUM		5
 	//#define SERCOM_6			6
 	//#define SERCOM_7			7
@@ -108,14 +107,12 @@
 
 	#define	B_DMACH_NUM				0
 	#define	M_DMACH_NUM				1
-	//#define	PWMLB_DMA			2
-	//#define	PWMHB_DMA			3
-//	#define	DACTC_DMACH_NUM			4
-	#define	UART0_DMACH_NUM			5
-	//#define	NAND_MEMCOPY_DMA	6
-	#define	I2C_DMACH_NUM			7
-	#define	SPI_DMA_TX_CH			8
-	#define	SPI_DMA_RX_CH			9
+	#define	UART0_DMACH_NUM			2
+	#define	I2C_DMACH_NUM			3
+	#define	SPI_DMA_TX_CH			4
+	#define	SPI_DMA_RX_CH			5
+	#define	ADXL_DMA_TX_CH			6
+	#define	ADXL_DMA_RX_CH			7
 	//#define	ADC_DMA					30
 	//#define	CRC_DMA					31
 
@@ -125,17 +122,17 @@
 	#define EVENT_DNNKM			1
 	#define EVENT_GEN			2
 	#define EVENT_WIN			3
-	#define EVENT_MANR_1		4
-	#define EVENT_MANR_2		5
+	//#define EVENT_MANR_1		4
+	//#define EVENT_MANR_2		5
 	//#define EVENT_BTCC_RETRG	6
 	//#define EVENT_MTCC_RETRG	7
 
 	// ++++++++++++++	TC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define	WIN_TC				TC0
-	//#define	DAC_TC				TC1
-	//#define MANT_TC			TC2
-	#define MANI_TC				TC3
+	//#define					TC1
+	//#define					TC2
+	//#define					TC3
 	//#define 					TC4
 	//#define 					TC5
 
@@ -171,11 +168,11 @@
 	// ++++++++++++++	TCC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-	#define MANT_TCC			TCC0
+	//#define					TCC0
 	#define GEN_TCC				TCC1
 	#define B_TCC				TCC2
 	#define M_TCC				TCC3
-	#define MANR_TCC			TCC4
+	//#define					TCC4
 
 	#define GEN_TCC0_TCC1		GEN_MCK
 	#define GEN_TCC2_TCC3		GEN_MCK
@@ -218,36 +215,32 @@
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define MAN_TRANSMIT_V2
+	//#define MAN_TRANSMIT_V2
 
-	#ifdef TLS_GORIZONT
-	#define MAN_TRANSMIT_LENPTR
-	#endif
+	//#define PIO_MANCH		HW::PIOA
+	//#define PIN_L1			9			// «убец вверх 
+	//#define PIN_L2			8 
+	//#define MANCH_PMUX		PORT_PMUX_F
+	//#define L1_WO_NUM		1
+	//#define L2_WO_NUM		0
 
-	#define PIO_MANCH		HW::PIOA
-	#define PIN_L1			9			// «убец вверх 
-	#define PIN_L2			8 
-	#define MANCH_PMUX		PORT_PMUX_F
-	#define L1_WO_NUM		1
-	#define L2_WO_NUM		0
+	//#define L1				(1UL<<PIN_L1)
+	//#define L2				(1UL<<PIN_L2)
+	//#define H1				0
+	//#define H2				0
 
-	#define L1				(1UL<<PIN_L1)
-	#define L2				(1UL<<PIN_L2)
-	#define H1				0
-	#define H2				0
+	//#define PIO_RXD			HW::PIOA
+	//#define PIN_RXD			0
+	//#define RXD				(1UL<<PIN_RXD)
 
-	#define PIO_RXD			HW::PIOA
-	#define PIN_RXD			0
-	#define RXD				(1UL<<PIN_RXD)
+	//#define Pin_ManRcvIRQ_Set()		HW::PIOA->BSET(1)
+	//#define Pin_ManRcvIRQ_Clr()		HW::PIOA->BCLR(1)
 
-	#define Pin_ManRcvIRQ_Set()		HW::PIOA->BSET(1)
-	#define Pin_ManRcvIRQ_Clr()		HW::PIOA->BCLR(1)
+	//#define Pin_ManTrmIRQ_Set()		HW::PIOA->BSET(7)		
+	//#define Pin_ManTrmIRQ_Clr()		HW::PIOA->BCLR(7)		
 
-	#define Pin_ManTrmIRQ_Set()		HW::PIOA->BSET(7)		
-	#define Pin_ManTrmIRQ_Clr()		HW::PIOA->BCLR(7)		
-
-	#define Pin_ManRcvSync_Set()	HW::PIOA->BSET(2)		
-	#define Pin_ManRcvSync_Clr()	HW::PIOA->BCLR(2)		
+	//#define Pin_ManRcvSync_Set()	HW::PIOA->BSET(2)		
+	//#define Pin_ManRcvSync_Clr()	HW::PIOA->BCLR(2)		
 	
 	
 	// ++++++++++++++	USART	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -256,15 +249,15 @@
 	#define PIO_URXD0			HW::PIOA 
 	#define PIO_RTS0			HW::PIOA 
 
-	#define PMUX_UTXD0			PORT_PMUX_C
-	#define PMUX_URXD0			PORT_PMUX_C 
+	#define PMUX_UTXD0			PORT_PMUX_D
+	#define PMUX_URXD0			PORT_PMUX_D 
 
 	#define UART0_TXPO			USART_TXPO_0 
-	#define UART0_RXPO			USART_RXPO_1 
+	#define UART0_RXPO			USART_RXPO_2 
 
-	#define PIN_UTXD0			12 
-	#define PIN_URXD0			13 
-	#define PIN_RTS0			21 
+	#define PIN_UTXD0			4 
+	#define PIN_URXD0			6 
+	#define PIN_RTS0			5 
 
 	#define UTXD0				(1UL<<PIN_UTXD0) 
 	#define URXD0				(1UL<<PIN_URXD0) 
@@ -330,12 +323,40 @@
 	//#define Pin_SPI_IRQ_Set()	HW::PIOB->BSET(15)		
 	//#define Pin_SPI_IRQ_Clr()	HW::PIOB->BCLR(15)		
 
+	// ++++++++++++++ ADXL355  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	
+	#define PIO_ADXLSPCK		HW::PIOB
+	#define PIO_ADXLMOSI		HW::PIOB
+	#define PIO_ADXLMISO		HW::PIOB
+	#define PIO_ADXL_CS			HW::PIOB
+
+	#define PIN_ADXLSPCK		13
+	#define PIN_ADXLMOSI		12 
+	#define PIN_ADXLMISO		15 
+	#define PIN_ADXL_CS			14
+
+	#define ADXLSPCK			(1<<PIN_ADXLSPCK) 
+	#define ADXLMOSI			(1<<PIN_ADXLMOSI) 
+	#define ADXLMISO			(1<<PIN_ADXLMISO) 
+	#define ADXL_CS				(1<<PIN_ADXL_CS	) 
+
+	#define ADXL_PMUX_SPCK		PORT_PMUX_C 
+	#define ADXL_PMUX_MOSI		PORT_PMUX_C
+	#define ADXL_PMUX_MISO		PORT_PMUX_C
+
+	#define ADXL_DIPO_BITS		SPI_DIPO(3)
+	#define ADXL_DOPO_BITS		SPI_DOPO(0) 
+
+	#define ADXL_GEN_SRC		GEN_MCK
+	#define ADXL_GEN_CLK		GEN_MCK_CLK
+	#define ADXL_BAUDRATE		8000000
+
 	// ++++++++++++++	PIO INIT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define PIOA_INIT_DIR		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|L1|L2|PA10|PA11|PA15|D_FIRE|PA17|PA18|PA19|RTS0|PA27)
+	#define PIOA_INIT_DIR		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|PA10|PA11|PA15|D_FIRE|PA17|PA18|PA19|RTS0|PA27)
 	#define PIOA_INIT_SET		(0)
-	#define PIOA_INIT_CLR		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|L1|L2|PA10|PA11|PA15|D_FIRE|PA17|PA18|PA19|RTS0|PA27)
-	#define PIOA_TEST_MASK		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|L1|L2|PA10|PA11|UTXD0|PA15|D_FIRE|PA17|PA18|PA19|PA20|RTS0|PA22|PA23|PA27)
+	#define PIOA_INIT_CLR		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|PA10|PA11|PA15|D_FIRE|PA17|PA18|PA19|RTS0|PA27)
+	#define PIOA_TEST_MASK		(PA01|PA02|PA03|PA04|PA05|PA06|PA07|PA10|PA11|UTXD0|PA15|D_FIRE|PA17|PA18|PA19|PA20|RTS0|PA22|PA23|PA27)
 
 	#define PIOB_INIT_DIR		(PB00|PB01|PB02|PB03|PB05|PB07|PB08|PB09|PB10|PB11|PB12|PB13|PB14|PB15|PB16|PB17|PB22|PB23|PB30|PB31)
 	#define PIOB_INIT_SET		(0)

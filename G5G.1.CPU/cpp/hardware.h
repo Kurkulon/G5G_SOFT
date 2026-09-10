@@ -1,14 +1,16 @@
 #ifndef HARDWARE_H__23_12_2013__11_37
 #define HARDWARE_H__23_12_2013__11_37
 
-#include "G5D_1_HW_CONF.H"
+#include "G5G_1_HW_CONF.H"
 #include "types.h"
 //#include "core.h"
 #include "time.h"
 #include "i2c.h"
+#include "spi.h"
+
 //#include "hw_nand.h"
 //#include "hw_rtm.h"
-#include "MANCH\manch.h"
+//#include "MANCH\manch.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -61,5 +63,6 @@ extern u16 Get_FBPOW2();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+extern S_SPIM	spiadxl;
 
 #endif // HARDWARE_H__23_12_2013__11_37

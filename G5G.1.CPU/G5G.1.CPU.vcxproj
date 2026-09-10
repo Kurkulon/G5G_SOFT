@@ -75,9 +75,7 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Include\G_RCV.h" />
-    <ClInclude Include="..\..\Include\G_TRM.h" />
-    <ClInclude Include="..\Include\G5D_1_HW_CONF.H" />
+    <ClInclude Include="..\Include\G5G_1_HW_CONF.H" />
     <ClInclude Include="cpp\hardware.h" />
     <ClInclude Include="cpp\hw_com.h" />
   </ItemGroup>
