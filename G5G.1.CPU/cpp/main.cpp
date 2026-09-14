@@ -35,11 +35,13 @@ __packed struct MainVars // NonVolatileVars
 	u32 timeStamp;
 
 	u16 numDevice;
-	u16 genFreq;		//	Частота генератора(Гц), 
-	u16 winCount;		//	Количество временных окон(шт), 
-	u16 winTime;		//	Длительность временного окна(мкс),
-	u16 bLevel;			//	Уровень дискриминации МЗ(у.е), 
-	u16 mLevel;			//	Уровень дискриминации БЗ(у.е),
+	u16 genFreq;				//	Частота генератора(Гц), 
+	u16 winCount;				//	Количество временных окон(шт), 
+	u16 winTime;				//	Длительность временного окна(мкс),
+	u16 bLevel;					//	Уровень дискриминации МЗ(у.е), 
+	u16 mLevel;					//	Уровень дискриминации БЗ(у.е),
+	u16 disableFireNoVibration;	//	Отключение регистрации на стоянке(0 - нет, 1 - да)
+	u16 levelNoVibration;		// Уровень вибрации режима отключения регистрации на стойнке(у.е)(ushort)
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -51,15 +53,35 @@ static MainVars mv;
 u32 fps;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u16 manRcvData[10];
-static u16 manTrmData[4096];
+struct ManMsg 
+{
+	enum { VER = 1 };
+
+	struct Header
+	{
+		byte ver;
+		byte magic;
+		u16 dataLen;
+		u16 dataCRC;
+		u16 crc;
+	} 
+	hdr;
+
+	u16 data[16];
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static ManMsg manRcvData;
+static u16 manTrmDtaa[4096];
 static u16 manPckData[128 + WINDOW_SIZE*4 + 16];
 static u16 manUnpData[128 + WINDOW_SIZE*4 + 16];
 static u16 manTrmBaud = 0;
 static u16 tlsTrmBaud = 0;
 
-static const u16 manReqWord = 0x7000;
+static const u16 manReqWord = 0x0900;
 static const u16 manReqMask = 0xFF00;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -108,54 +130,46 @@ void SaveMainParams()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_00(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_00(u16 *data, u16 len, u16 *out)
 {
-	if (len == 0 || len > 2 || wb == 0) return false;
+	if (len == 0 || len > 1 || out == 0) return 0;
 
-	__packed u16 *start = manTrmData;
+	__packed u16 *start = out;
 
-	data = manTrmData;
+	*(out++)	= (manReqWord & manReqMask) | 0;
+	*(out++)	= mv.numDevice;
+	*(out++)	= verDevice;
 
-	*(data++)	= (manReqWord & manReqMask) | 0;
-	*(data++)	= mv.numDevice;
-	*(data++)	= verDevice;
-
-	wb->data = manTrmData;
-	wb->len = (data - start)*2;
-
-	return true;
+	return out - start;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_10(u16 *data, u16 len, u16 *out)
 {
-	if (len == 0 || len > 2 || wb == 0) return false;
+	if (len == 0 || len > 1 || out == 0) return 0;
 
-	__packed u16 *start = manTrmData;
+	__packed u16 *start = out;
 
-	data = manTrmData;
-
-	*(data++)	= (manReqWord & manReqMask) | 0x10;		//	1. Ответное слово (принятая команда)
-	*(data++)	= mv.genFreq;							//	2. Частота генератора(Гц), 				
-	*(data++)	= mv.winCount;							//	3. Количество временных окон(шт), 					
-	*(data++)	= mv.winTime;							//	4. Длительность временного окна(мкс), 						
-	*(data++)	= mv.mLevel;							//	5. Уровень дискриминации МЗ(у.е), 					
-	*(data++)	= mv.bLevel;							//	6. Уровень дискриминации БЗ(у.е),					
-
-	wb->data = manTrmData;
-	wb->len = (data - start)*2;
-
-	return true;
+	*(out++)	= (manReqWord & manReqMask) | 0x10;		//	1. Ответное слово (принятая команда)
+	*(out++)	= mv.genFreq;							//	2. Частота генератора(Гц), 				
+	*(out++)	= mv.winCount;							//	3. Количество временных окон(шт), 					
+	*(out++)	= mv.winTime;							//	4. Длительность временного окна(мкс), 						
+	*(out++)	= mv.mLevel;							//	5. Уровень дискриминации МЗ(у.е), 					
+	*(out++)	= mv.bLevel;							//	6. Уровень дискриминации БЗ(у.е),	
+	*(out++)	= mv.disableFireNoVibration;			//	7. Отключение регистрации на стоянке(0 - нет, 1 - да)	
+	*(out++)	= mv.levelNoVibration;					//	8. Уровень вибрации режима отключения регистрации на стойнке(у.е)(ushort)	
+	
+	return out - start;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_20(u16 *data, u16 len, u16 *out)
 {
 	static u32 pt = 0;
 
-	if (len == 0 || len > 1 || wb == 0) return false;
+	if (len == 0 || len > 1 || out == 0) return 0;
 
 	u32 t = GetCYCCNT();
 	u32 dt = t - pt;
@@ -163,94 +177,62 @@ static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	
 	dt /= MCK_MHz;
 
-	if (data[0] & 1)
+	if ((data[0] & 1) == 0 || (mv.disableFireNoVibration != 0 && vibration < mv.levelNoVibration ))
 	{
-		EnableGen();
+		DisableGen();
 	}
 	else
 	{
-		DisableGen();
+		EnableGen();
 	};
 
-	__packed u16 *start = manTrmData;
+	__packed u16 *start = out;
 
-	manTrmData[0] = data[0];					//	1. Ответное слово (принятая команда)
+	out[0] = data[0];					//	1. Ответное слово (принятая команда)
 	
-	data = manTrmData;
-	data++;
+	out++;
 
 	u16 wc;
 												
-	*(data++)	= GetFireCount();				//	2. Количество вспышек(ushort)
-	*(data++)	= GetGenWorkTime();				//	3. Наработка генератора(мин)(ushort)					
-	*(data++)	= temp;							//	4. Температура в приборе(0.1 гр)(short)								
-	*(data++)	= wc = mv.winCount;				//	5. Количество временных окон(шт)			
-	*(data++)	= mv.winTime;					//	6. Длительность временного окна(мкс)
-	*(data++)	= dt;							//	7,8. Период накопления БЗ,МЗ (мкс)(uint32)
-	*(data++)	= dt>>16;						//	7,8. Период накопления БЗ,МЗ (мкс)(uint32)
-	*(data++)	= loc;							//	9. Локатор					
-	*(data++)	= loc_min;						//	10. Локатор минимум
-	*(data++)	= loc_max;						//	11. Локатор максимум
-	*(data++)	= MIN(loc_gk, 65535);			//	12. ГК(имп/период)
-	*(data++)	= loc_period;					//	13,14. Период накопления ГК(мкс)(uint32)
-	*(data++)	= loc_period>>16;				//	13,14. Период накопления ГК(мкс)(uint32)
-	*(data++)	= loc_req_count;				//	15. Счётчик запросов ЛК-ГК
-	*(data++)	= framErrorMask;				//	16. Статус ошибог FRAM
-	*(data++)	= Get_FBPOW2();					//	17. Напряжение жилы (0.1В)
+	*(out++)	= GetFireCount();				//	2. Количество вспышек(ushort)
+	*(out++)	= GetGenWorkTime();				//	3. Наработка генератора(мин)(ushort)					
+	*(out++)	= temp;							//	4. Температура в приборе(0.1 гр)(short)								
+	*(out++)	= wc = mv.winCount;				//	5. Количество временных окон(шт)			
+	*(out++)	= mv.winTime;					//	6. Длительность временного окна(мкс)
+	*(out++)	= dt;							//	7,8. Период накопления БЗ,МЗ (мкс)(uint32)
+	*(out++)	= dt>>16;						//	7,8. Период накопления БЗ,МЗ (мкс)(uint32)
+	*(out++)	= framErrorMask;				//	9. Статус ошибог FRAM (у.е.)
+	*(out++)	= Get_FBPOW1();					//	10. Напряжение питания (0.1В)
+	*(out++)	= Get_FBPOW2();					//	11. Напряжение генератора (0.1В)
+	*(out++)	= ax;							//	12. Ax (у.е)(short)
+	*(out++)	= ay;							//	13. Ay (у.е)(short)
+	*(out++)	= az;							//	14. Az (у.е)(short)
+	*(out++)	= at;							//	15. At (0.1 гр)(short)
+	*(out++)	= vibration;					//	16. Вибрация (у.е)(ushort)
 
 	framErrorMask = 0;
-
-	loc_gk = 0;
-	loc_period = 0;
-	loc_min = 0x7FFF;
-	loc_max = 0x8000;
-	//u16 n = 6;
 
 	for (u16 i = 0; i < wc; i++)
 	{
 		u32 tm = m_ts[i]; m_ts[i] = 0;
 		u32 tb = b_ts[i]; b_ts[i] = 0;
 
-		data[0]		= MIN(tm, 0xFFFF);			//	18..x. Спектр МЗ(ushort)
-		data[wc]	= MIN(tb, 0xFFFF);			//	x..y. Спектр БЗ(ushort)
+		out[0]		= MIN(tm, 0xFFFF);			//	17..x. Спектр МЗ(ushort)
+		out[wc]	= MIN(tb, 0xFFFF);				//	x..y. Спектр БЗ(ushort)
 
-		data++;
+		out++;
 	};
 
-	data += wc;
+	out += wc;
 
-	#ifdef COMPRESS_REQ20
-
-		manPckData[0] = manTrmData[0];
-		manPckData[1] = data-start-1;
-
-		byte *src = (byte*)(manTrmData+1);
-		byte *dst = (byte*)(manPckData+2);
-
-		u32 plen = MQcompressFast(src, manPckData[1]*2, dst);
-
-		dst[plen] = ~0;
-
-		//MQdecompress(dst, plen, (byte*)manUnpData, manPckData[1]*2);
-
-		mtb->data1 = manPckData;
-		mtb->len1 = 2 + (plen+1)/2;
-
-	#else
-
-		wb->data = manTrmData;
-		wb->len = (data - start)*2;
-
-	#endif
-
-	return true;
+	return out - start;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_80(u16 *data, u16 len, u16 *out)
 {
-	if (len < 3 || len > 4 || wb == 0) return false;
+	if (len < 3 || len > 3 || out == 0) return 0;
 
 	switch (data[1])
 	{
@@ -267,19 +249,16 @@ static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 			break;
 	};
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
+	out[0] = (manReqWord & manReqMask) | 0x80;
 
-	wb->data = manTrmData;
-	wb->len = 2;
-
-	return true;
+	return 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_90(u16 *data, u16 len, u16 *out)
 {
-	if (len < 3 || len > 4 || wb == 0) return false;
+	if (len < 2 || len > 2 || out == 0) return 0;
 
 	switch(data[1])
 	{
@@ -288,25 +267,24 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		case 0x03:	SetWindowTime(						mv.winTime	= LIM(data[2], 2, 512)			);	break;	//	0x3 - Длительность временного окна(2..2048 мкс), 
 		case 0x04:	AD5312_Set(AD5312_CHANNEL_LEVEL_M,	mv.mLevel	= MIN(data[2], 0x3FF)			);	break;	//	0x4 - Уровень дискриминации МЗ(у.е), 
 		case 0x05:	AD5312_Set(AD5312_CHANNEL_LEVEL_B,	mv.bLevel	= MIN(data[2], 0x3FF)			);	break;	//	0x5 - Уровень дискриминации БЗ(у.е),
+		case 0x06:	mv.disableFireNoVibration						= MIN(data[2], 1)				;	break;	//	0x6 - Отключение регистрации на стоянке(0 - нет, 1 - да)	
+		case 0x07:	mv.levelNoVibration								= data[2]						;	break;	//	0x7 - Уровень вибрации режима отключения регистрации на стойнке(у.е)(ushort)
 
 		default:
 
 			return false;
 	};
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
+	out[0] = (manReqWord & manReqMask) | 0x90;
 
-	wb->data = manTrmData;
-	wb->len = 2;
-
-	return true;
+	return 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_A0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_A0(u16 *data, u16 len, u16 *out)
 {
-	if (len < 3 || len > 4 || wb == 0) return false;
+	if (len < 2 || len > 3 || out == 0) return 0;
 
 	switch(data[1])
 	{
@@ -317,57 +295,48 @@ static bool RequestMan_A0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 			return false;
 	};
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0xA0;
+	out[0] = (manReqWord & manReqMask) | 0xA0;
 
-	wb->data = manTrmData;
-	wb->len = 2;
-
-	return true;
+	return 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static u16 RequestMan_F0(u16 *data, u16 len, u16 *out)
 {
-	if (len == 0 || len > 2 || wb == 0) return false;
+	if (len > 1 || out == 0) return false;
 
 	SaveMainParams();
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
+	out[0] = (manReqWord & manReqMask) | 0xF0;
 
-	wb->data = manTrmData;
-	wb->len = 2;
-
-	return true;
+	return 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+static u16 RequestMan(u16 *data, u16 len, u16 *out)
 {
-	u16 *p = (u16*)rb->data;
-	bool r = false;
+	u16 r = 0;
 
-	u16 t = p[0];
+	u16 t = data[0];
 
-	if ((t & manReqMask) != manReqWord || rb->len < 2)
+	if ((t & manReqMask) != manReqWord || len < 1)
 	{
-		return false;
+		return 0;
 	};
-
-	u16 len = (rb->len)>>1;
 
 	t = (t>>4) & 0xF;
 
 	switch (t)
 	{
-		case 0x0: 	r = RequestMan_00(p, len, wb); break;
-		case 0x1: 	r = RequestMan_10(p, len, wb); break;
-		case 0x2: 	r = RequestMan_20(p, len, wb); break;
-		case 0x8: 	r = RequestMan_80(p, len, wb); break;
-		case 0x9:	r = RequestMan_90(p, len, wb); break;
-		case 0xA:	r = RequestMan_A0(p, len, wb); break;
-		case 0xF:	r = RequestMan_F0(p, len, wb); break;
+		case 0x0: 	r = RequestMan_00(data, len, out); break;
+		case 0x1: 	r = RequestMan_10(data, len, out); break;
+		case 0x2: 	r = RequestMan_20(data, len, out); break;
+		case 0x8: 	r = RequestMan_80(data, len, out); break;
+		case 0x9:	r = RequestMan_90(data, len, out); break;
+		case 0xA:	r = RequestMan_A0(data, len, out); break;
+		case 0xF:	r = RequestMan_F0(data, len, out); break;
 	};
 
 	return r;
@@ -389,7 +358,7 @@ static void UpdateMan()
 	{
 		case 0:
 
-			rb.data = manRcvData;
+			rb.data = &manRcvData;
 			rb.maxLen = sizeof(manRcvData);
 			comdsp.Read(&rb, ~0, US2COM(100));
 			i++;
@@ -400,14 +369,45 @@ static void UpdateMan()
 
 			if (!comdsp.Update())
 			{
-				if (rb.recieved && rb.len > 0 && RequestMan(&wb, &rb))
+				ManMsg *out = (ManMsg*)manTrmDtaa;
+
+				
+
+				if (rb.recieved && rb.len >= sizeof(manRcvData.hdr)
+					&& GetCRC16(&manRcvData.hdr, sizeof(manRcvData.hdr)) == 0
+					&& GetCRC16(manRcvData.data, manRcvData.hdr.dataLen) == manRcvData.hdr.dataCRC)
 				{
-					comdsp.Write(&wb);
-				}
-				else
-				{
-					i = 0;
+					u16 len = RequestMan(manRcvData.data, manRcvData.hdr.dataLen>>1, out->data);
+
+					if (len != 0)
+					{
+						out->hdr.ver		= out->VER;
+						out->hdr.magic		= 0x55;
+						out->hdr.dataLen	= len*2;
+						out->hdr.dataCRC	= GetCRC16(out->data, out->hdr.dataLen);
+						out->hdr.crc		= GetCRC16(&out->hdr, sizeof(out->hdr)-2);
+
+						wb.data = out;
+						wb.len = sizeof(out->hdr) + out->hdr.dataLen;
+					
+						comdsp.Write(&wb);
+
+						i++;
+
+						break;
+					};
 				};
+
+				i = 0;
+			};
+
+			break;
+		
+		case 2:
+
+			if (!comdsp.Update())
+			{
+				i = 0;
 			};
 
 			break;
@@ -665,7 +665,7 @@ static void UpdateAccel()
 			az =  (fx / 65536);
 
 			//at = 2500 + ((1852 - t) * 2000 + 91) / 181;
-			at = 2500 + ((1852 - ft) * 11315 + 512) / 1024;
+			at = 250 + ((1852 - ft) * 1132 + 512) / 1024;
 
 			i32 vx = ABS(x - fx) / 64;
 			i32 vy = ABS(y - fy) / 64;
@@ -955,12 +955,14 @@ static void UpdateHV()
 
 static void InitMainVars()
 {
-	mv.numDevice	= 11111;
-	mv.genFreq		= 10;	
-	mv.winCount		= 64;	
-	mv.winTime		= 32;	
-	mv.bLevel		= 430;		
-	mv.mLevel		= 430;		
+	mv.numDevice				= 11111;
+	mv.genFreq					= 10;	
+	mv.winCount					= 64;	
+	mv.winTime					= 32;	
+	mv.bLevel					= 430;		
+	mv.mLevel					= 430;		
+	mv.disableFireNoVibration	= 0;		
+	mv.levelNoVibration			= 100;		
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1364,7 +1366,7 @@ int main()
 
 	InitTaskList();
 
-	comdsp.Connect(ComPort::ASYNC, 2000000, 0, 2);
+	comdsp.Connect(ComPort::ASYNC, 500000, 0, 2);
 
 	spiadxl.Connect(ADXL_BAUDRATE);
 

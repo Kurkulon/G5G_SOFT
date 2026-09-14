@@ -268,6 +268,16 @@
 
 	// ++++++++++++++	ADC		++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+	#define FBPOW1_ADC			ADC0
+	#define FBPOW1_AIN			0
+
+	#define PIO_FBPOW1			HW::PIOA	//ADC1_AIN[8]
+
+	#define PIN_FBPOW1			2
+
+	#define FBPOW1				(1UL<<PIN_FBPOW1	) 
+
+
 	#define FBPOW2_ADC			ADC1
 	#define FBPOW2_AIN			8
 
