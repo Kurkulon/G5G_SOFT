@@ -1366,7 +1366,7 @@ int main()
 
 	InitTaskList();
 
-	comdsp.Connect(ComPort::ASYNC, 500000, 0, 2);
+	comdsp.Connect(ComPort::ASYNC, 2000000, 0, 2);
 
 	spiadxl.Connect(ADXL_BAUDRATE);
 
