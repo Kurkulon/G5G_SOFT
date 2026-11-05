@@ -258,7 +258,7 @@ static u16 RequestMan_80(u16 *data, u16 len, u16 *out)
 
 static u16 RequestMan_90(u16 *data, u16 len, u16 *out)
 {
-	if (len < 2 || len > 2 || out == 0) return 0;
+	if (len < 3 || len > 3 || out == 0) return 0;
 
 	switch(data[1])
 	{
