@@ -36,6 +36,7 @@ extern void DisableGen();
 
 inline u16 GetFireCount() {extern u16 fireCount; __disable_irq(); u16 v = fireCount; fireCount = 0; __enable_irq(); return v; }
 inline u16 GetGenWorkTime() {extern u16 genWorkTimeMinutes; return genWorkTimeMinutes; }
+inline i16 GetTemp() { extern i16 temp; return temp; }
 
 extern void SetGenFreq(u16 freq);
 extern void SetWindowCount(u16 wc);

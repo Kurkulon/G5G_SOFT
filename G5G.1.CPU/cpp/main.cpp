@@ -17,7 +17,7 @@
 //#include "G_TRM.H"
 
 
-enum { VERSION = 0x101 };
+enum { VERSION = 0x102 };
 
 //#pragma O3
 //#pragma Otime
@@ -957,10 +957,10 @@ static void InitMainVars()
 {
 	mv.numDevice				= 11111;
 	mv.genFreq					= 10;	
-	mv.winCount					= 64;	
+	mv.winCount					= 128;	
 	mv.winTime					= 32;	
-	mv.bLevel					= 430;		
-	mv.mLevel					= 430;		
+	mv.bLevel					= 570;		
+	mv.mLevel					= 580;		
 	mv.disableFireNoVibration	= 0;		
 	mv.levelNoVibration			= 100;		
 }

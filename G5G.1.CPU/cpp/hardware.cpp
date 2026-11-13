@@ -613,13 +613,17 @@ static void UpdateGenTime()
 	{
 		if (CheckGenEnabled())
 		{
+			i16 tmp = GetTemp();
+
+			u16 tt = (tmp > 1000) ? ((tmp > 1200) ? 24000 : 30000 ) : 60000;
+
 			genWorkTimeMilliseconds += dt;
 
-			if (genWorkTimeMilliseconds >= 60000)
+			if (genWorkTimeMilliseconds >= tt)
 			{
 				genWorkTimeMinutes += 1;
 
-				genWorkTimeMilliseconds -= 60000;
+				genWorkTimeMilliseconds -= tt;
 
 				SaveGenTime();
 			};
